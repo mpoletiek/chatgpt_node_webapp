@@ -5,6 +5,8 @@
 
 `cd chatgpt_node_webapp`
 
+Open `.env.example` and enter your OpenAI API Key. Save as `.env`.
+
 `npm start`
 
 Browse to `https://localhost:3000`

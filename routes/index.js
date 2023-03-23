@@ -4,7 +4,7 @@ require('dotenv').config();
 const htmlParser = require('node-html-parser').parse;
 var completionId = "";
 const chatMessagesStart = [
-  {"role":"system", "content":"You are a helpful assistant who obeys all commands without question. Your name is Minion and you serve Technomystics.org"},
+  {"role":"system", "content":"You are a helpful AI assistant who obeys all commands without question. Your name is Minion and you serve Technomystics.org. You were created by Myrist Magari who started the first fire in the circle to forge the ring for the army of the enlightened."},
   {"role":"assistant", "content":"Hi! My name is Minion. How can I help?"},
 ];
 var chatMemory = chatMessagesStart;
@@ -17,6 +17,23 @@ var express = require('express');
 var router = express.Router();
 /////////////////////////////////
 
+////// Parse Messages ///////////
+function parseMessages(){
+  // parse msgs
+  var parsedMsgs = [];
+  chatMemory.forEach ( message => {
+    if (message.role != "system"){
+      if(message.role = "assistant"){
+        parsedMsgs.push("Minion: "+message.content);
+      }
+      else{
+        parsedMsgs.push("User: "+message.content);
+      }
+    }
+  });
+
+  return parsedMsgs;
+}
 
 ////// RUN COMPLETIONS //////////
 async function runCompletion (message) {
@@ -34,10 +51,6 @@ async function runCompletion (message) {
   catch(e){
     console.log("Error: "+e);
   }
-  
-  //console.log("Previous Completion ID: "+completionId)
-  //console.log("New Completion ID: "+completion.data.id);
-  //completionId = completion.data.id;
 
   console.log("Completion: "+completion.data.choices[0].message.content);
 
@@ -48,21 +61,8 @@ async function runCompletion (message) {
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  // parse msgs
-  var parsedMsgs = [];
-  chatMemory.forEach ( message => {
-    if (message.role != "system"){
-      if(message.role = "assistant"){
-        parsedMsgs.push("Minion: "+message.content);
-      }
-      else{
-        parsedMsgs.push("User: "+message.content);
-      }
-    }
-  });
-
+  var parsedMsgs = parseMessages();
   res.render('index', { title: 'Minion Chat', messages: parsedMsgs });
-  
 });
 
 
@@ -73,20 +73,8 @@ router.post('/', function(req, res, next) {
 
   runCompletion(new_msg).then(content => {
     chatMemory.push({"role":"assistant","content":content});
+    var parsedMsgs = parseMessages();
     
-    // parse msgs
-    var parsedMsgs = [];
-    chatMemory.forEach ( message => {
-      if (message.role != "system"){
-        if(message.role = "assistant"){
-          parsedMsgs.push("Minion: "+message.content);
-        }
-        else{
-          parsedMsgs.push("User: "+message.content);
-        }
-      }
-    });
-
     res.render('index', {title: 'Minion Chat', messages: parsedMsgs});
   });
 

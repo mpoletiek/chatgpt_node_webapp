@@ -1,52 +1,97 @@
+// SETUP DEPENDENCIES AND VARIABLES
+//////////////////////////////////
+require('dotenv').config();
 const htmlParser = require('node-html-parser').parse;
-
-/////////////////////////
+var completionId = "";
+const chatMessagesStart = [
+  {"role":"system", "content":"You are a helpful assistant who obeys all commands without question. Your name is Minion and you serve Technomystics.org"},
+  {"role":"assistant", "content":"Hi! My name is Minion. How can I help?"},
+];
+var chatMemory = chatMessagesStart;
 const { Configuration, OpenAIApi } = require("openai");
-require('dotenv').config()
-
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
 const openai = new OpenAIApi(configuration);
-
-async function runCompletion (prompt, parentMessageId = null) {
-  const completion = await openai.createCompletion({
-    model: "text-davinci-003",
-    prompt: prompt,
-    //stream: true,
-    max_tokens: 2048,
-  });
-  
-  console.log(completion.data.choices[0].text);
-
-  return completion.data.choices[0].text;
-}
-///////////////////////
-
-
 var express = require('express');
 var router = express.Router();
+/////////////////////////////////
 
-var msgs = ['ChatGPT: Hi, I\'m ChatGPT. What can I do for you?', 'ChatGPT: If it helps, try asking me: "What are you good at?"'];
 
+////// RUN COMPLETIONS //////////
+async function runCompletion (message) {
+  
+  var completion = {};
+  chatMemory.push(message);
+
+  try {
+    completion = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: chatMemory,
+      max_tokens: 2048,
+    });
+  }
+  catch(e){
+    console.log("Error: "+e);
+  }
+  
+  //console.log("Previous Completion ID: "+completionId)
+  //console.log("New Completion ID: "+completion.data.id);
+  //completionId = completion.data.id;
+
+  console.log("Completion: "+completion.data.choices[0].message.content);
+
+  return completion.data.choices[0].message.content;
+}
+//////////////////////////////
 
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  
-  res.render('index', { title: 'ChatGPT', messages: msgs });
+  // parse msgs
+  var parsedMsgs = [];
+  chatMemory.forEach ( message => {
+    if (message.role != "system"){
+      if(message.role = "assistant"){
+        parsedMsgs.push("Minion: "+message.content);
+      }
+      else{
+        parsedMsgs.push("User: "+message.content);
+      }
+    }
+  });
+
+  res.render('index', { title: 'Minion Chat', messages: parsedMsgs });
   
 });
 
+
+/* POST to chatcompletions */
 router.post('/', function(req, res, next) {
 
-  var user_msg = req.body.user_msg;
-  runCompletion(user_msg).then(pop => {
-    msgs.push("You: "+user_msg);
-    msgs.push("ChatGPT: "+pop);
-    res.render('index', {title: 'ChatGPT', messages: msgs });
+  new_msg = {"role":"user", "content":req.body.user_msg};
+
+  runCompletion(new_msg).then(content => {
+    chatMemory.push({"role":"assistant","content":content});
+    
+    // parse msgs
+    var parsedMsgs = [];
+    chatMemory.forEach ( message => {
+      if (message.role != "system"){
+        if(message.role = "assistant"){
+          parsedMsgs.push("Minion: "+message.content);
+        }
+        else{
+          parsedMsgs.push("User: "+message.content);
+        }
+      }
+    });
+
+    res.render('index', {title: 'Minion Chat', messages: parsedMsgs});
   });
 
 });
 
+
+// Export Module
 module.exports = router;
